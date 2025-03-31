@@ -1,0 +1,159 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS SAM Python API Boilerplate
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.11
+    MemorySize: 128
+
+Resources:
+  # DynamoDBTable:
+  #   Type: AWS::DynamoDB::Table
+  #   Properties:
+  #     TableName: ExampleTableName
+  #     BillingMode: PAY_PER_REQUEST
+  #     AttributeDefinitions:
+  #       - AttributeName: id
+  #         AttributeType: S
+  #       - AttributeName: created_at
+  #         AttributeType: S
+  #     KeySchema:
+  #       - AttributeName: id
+  #         KeyType: HASH
+  #     GlobalSecondaryIndexes:
+  #       - IndexName: ExampleTableIndexName
+  #         KeySchema:
+  #           - AttributeName: created_at
+  #             KeyType: HASH
+  #         Projection:
+  #           ProjectionType: ALL
+
+  ApiGatewayAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+        AllowCredentials: false
+      Auth:
+        AddDefaultAuthorizerToCorsPreflight: false
+
+  LambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: ExampleLambdaLayerName
+      Description: Layer per le funzioni lambda
+      ContentUri: ./layer/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Retain
+
+  RecordsListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ExampleListFunction
+      CodeUri: ./
+      Handler: main.index
+      Layers:
+        - !Ref LambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: ExampleTableName
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /records
+            Method: GET
+            RestApiId:
+              Ref: ApiGatewayApi
+
+  RecordCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ExampleCreateFunction
+      CodeUri: ./
+      Handler: main.create
+      Layers:
+        - !Ref LambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: ExampleTableName
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /records
+            Method: POST
+            RestApiId:
+              Ref: ApiGatewayApi
+
+  RecordShowFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ExampleShowFunction
+      CodeUri: ./
+      Handler: main.show
+      Layers:
+        - !Ref LambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: ExampleTableName
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /records/{id}
+            Method: GET
+            RestApiId:
+              Ref: ApiGatewayApi
+
+  RecordUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ExampleUpdateFunction
+      CodeUri: ./
+      Handler: main.update
+      Layers:
+        - !Ref LambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: ExampleTableName
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /records/{id}
+            Method: PUT
+            RestApiId:
+              Ref: ApiGatewayApi
+
+  RecordDeleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ExampleDeleteFunction
+      CodeUri: ./
+      Handler: main.delete
+      Layers:
+        - !Ref LambdaLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: ExampleTableName
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /records/{id}
+            Method: DELETE
+            RestApiId:
+              Ref: ApiGatewayApi
+
+Outputs:
+  ExampleAPI:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ApiGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
